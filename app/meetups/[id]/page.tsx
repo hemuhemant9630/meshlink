@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar';
 import Icon from '@/components/Icon';
 import { DateTile } from '@/components/Widgets';
 import { toggleRsvp } from '@/app/actions';
+import { SOURCES, sourceLabel } from '@/lib/sources';
 
 export default async function MeetupPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireUser();
@@ -19,6 +20,7 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
   const going = attendees.some((a) => a.id === me.id);
   const past = new Date(e.starts_at) <= new Date();
   const full = e.capacity > 0 && attendees.length >= e.capacity;
+  const external = e.source && e.source !== 'meshlink';
   return (
     <main className="page">
       <div className="page-header">
@@ -39,10 +41,11 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
               <dt>When</dt><dd>{fmtDate(e.starts_at)}{past ? ' (past)' : ''}</dd>
               <dt>Where</dt><dd>{e.is_online ? 'Online' : e.city}{e.venue ? ` — ${e.venue}` : ''}</dd>
               <dt>Attendees</dt><dd>{attendees.length}{e.capacity ? ` / ${e.capacity}` : ''}</dd>
-              <dt>Organizer</dt><dd><Link href={`/profile/${e.organizer_id}`}>{e.organizer}</Link></dd>
+              {external ? <><dt>Source</dt><dd><a href={SOURCES[e.source]?.url} target="_blank" rel="noopener noreferrer">{sourceLabel(e.source)}</a></dd></> : <><dt>Organizer</dt><dd><Link href={`/profile/${e.organizer_id}`}>{e.organizer}</Link></dd></>}
               {e.group_id && <><dt>Group</dt><dd><Link href={`/groups/${e.group_id}`}>{e.group_name}</Link></dd></>}
             </dl>
             {e.description && <p style={{ whiteSpace: 'pre-wrap', marginTop: '.5rem' }}>{e.description}</p>}
+            {external && <div><a href={e.external_url} target="_blank" rel="noopener noreferrer nofollow" className="btn btn-brand">Register on {sourceLabel(e.source)} ↗</a></div>}
           </div>
         </section>
         <aside className="card">

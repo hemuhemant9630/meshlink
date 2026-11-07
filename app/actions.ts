@@ -272,8 +272,8 @@ export async function createJob(fd: FormData) {
 export async function applyJob(fd: FormData) {
   const me = await requireUser();
   const jid = parseInt(str(fd, 'job_id', 10));
-  const job = await one<{ poster_id: number; title: string; active: boolean }>('SELECT poster_id,title,active FROM jobs WHERE id=$1', [jid]);
-  if (job?.active && job.poster_id !== me.id) {
+  const job = await one<{ poster_id: number; title: string; active: boolean }>("SELECT poster_id,title,active FROM jobs WHERE id=$1 AND source='meshlink'", [jid]);
+  if (job?.active && job.poster_id && job.poster_id !== me.id) {
     const r = await query('INSERT INTO job_applications (job_id,user_id,note) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING RETURNING id', [jid, me.id, str(fd, 'note', 2000)]);
     if (r.length) await notify(job.poster_id, me.id, `applied to ${job.title}`, `/jobs/${jid}`);
   }

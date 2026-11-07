@@ -122,3 +122,18 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, created_at DESC);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'meshlink';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS external_id TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS external_url TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ;
+CREATE UNIQUE INDEX IF NOT EXISTS jobs_source_ext_idx ON jobs(source, external_id);
+ALTER TABLE events ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'meshlink';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS external_id TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS external_url TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS events_source_ext_idx ON events(source, external_id);
+CREATE TABLE IF NOT EXISTS import_runs (
+  id SERIAL PRIMARY KEY,
+  ran_at TIMESTAMPTZ DEFAULT now(),
+  trigger TEXT DEFAULT 'cron',
+  stats JSONB
+);

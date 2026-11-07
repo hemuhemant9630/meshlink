@@ -5,6 +5,7 @@ import { CITIES, JOB_TYPES, WORK_MODES, getCityFilter, timeAgo } from '@/lib/uti
 import Icon from '@/components/Icon';
 import { SubmitButton } from '@/components/client';
 import { createJob } from '@/app/actions';
+import { JOB_SOURCE_KEYS, SOURCES, lastSync, sourceLabel } from '@/lib/sources';
 
 const statusBadge = (s: string) => ({ Shortlisted: 'badge-brand', Interviewing: 'badge-warning', Offered: 'badge-success', Rejected: 'badge-error' } as any)[s] || '';
 
@@ -16,6 +17,8 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Rec
   const q = (sp.q || '').slice(0, 80);
   const mode = WORK_MODES.includes(sp.mode) ? sp.mode : '';
   const type = JOB_TYPES.includes(sp.type) ? sp.type : '';
+  const src = ['community', 'imported'].includes(sp.src) ? sp.src : '';
+  const synced = await lastSync();
 
   const jobs = tab === 'browse' ? await query<any>(
     `SELECT j.*, (SELECT count(*)::int FROM job_applications a WHERE a.job_id=j.id) applicants,
@@ -25,7 +28,8 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Rec
        AND ($3='' OR j.title ILIKE '%'||$3||'%' OR j.company ILIKE '%'||$3||'%' OR j.description ILIKE '%'||$3||'%'
             OR EXISTS (SELECT 1 FROM unnest(j.skills) s WHERE s ILIKE '%'||$3||'%'))
        AND ($4='' OR j.work_mode=$4) AND ($5='' OR j.job_type=$5)
-     ORDER BY j.created_at DESC LIMIT 80`, [me.id, city, q, mode, type]) : [];
+       AND ($6='' OR ($6='community' AND j.source='meshlink') OR ($6='imported' AND j.source<>'meshlink'))
+     ORDER BY COALESCE(j.posted_at, j.created_at) DESC LIMIT 150`, [me.id, city, q, mode, type, src]) : [];
   const applied = tab === 'mine' ? await query<any>(
     `SELECT a.status,a.created_at,j.id,j.title,j.company,j.city FROM job_applications a JOIN jobs j ON j.id=a.job_id WHERE a.user_id=$1 ORDER BY a.created_at DESC`, [me.id]) : [];
   const posted = tab === 'mine' ? await query<any>(
@@ -47,10 +51,16 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Rec
                 <input name="q" defaultValue={q} className="input" placeholder="Title, company, skill…" />
                 <select name="mode" defaultValue={mode} className="select"><option value="">Any work mode</option>{WORK_MODES.map((m) => <option key={m}>{m}</option>)}</select>
                 <select name="type" defaultValue={type} className="select"><option value="">Any type</option>{JOB_TYPES.map((m) => <option key={m}>{m}</option>)}</select>
+                <select name="src" defaultValue={src} className="select"><option value="">All sources</option><option value="community">Posted on MeshLink</option><option value="imported">From the web</option></select>
                 <button className="btn btn-brand">Search</button>
               </form>
             )}
           </div>
+          {tab === 'browse' && (
+            <p className="muted sync-note">MuleSoft &amp; Salesforce jobs posted in the last 15 days are pulled in daily from{' '}
+              {JOB_SOURCE_KEYS.map((k, i) => <span key={k}>{i ? ', ' : ''}<a href={SOURCES[k].url} target="_blank" rel="noopener noreferrer">{SOURCES[k].label}</a></span>)}
+              {synced ? <> · last synced {synced} ago</> : null}. Applications for imported jobs open on the original site.</p>
+          )}
           {tab === 'browse' && (jobs.length ? jobs.map((j) => (
             <Link key={j.id} href={`/jobs/${j.id}`} className="card card-body row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start', color: 'inherit', textDecoration: 'none' }}>
               <span className="icon-tile tile-navy" style={{ fontWeight: 800 }}>{j.company.slice(0, 1).toUpperCase()}</span>
@@ -61,8 +71,8 @@ export default async function Jobs({ searchParams }: { searchParams: Promise<Rec
                 <div style={{ marginTop: 4 }}>{(j.skills || []).slice(0, 5).map((s: string) => <span key={s} className="pill">{s}</span>)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <small className="muted">{timeAgo(j.created_at)}</small><br />
-                {j.my_status ? <span className={`badge ${statusBadge(j.my_status)}`}>{j.my_status}</span> : <small className="muted">{j.applicants} applicant{j.applicants === 1 ? '' : 's'}</small>}
+                <small className="muted">{timeAgo(j.posted_at || j.created_at)}</small><br />
+                {j.source !== 'meshlink' ? <span className="badge badge-source">via {sourceLabel(j.source)}</span> : j.my_status ? <span className={`badge ${statusBadge(j.my_status)}`}>{j.my_status}</span> : <small className="muted">{j.applicants} applicant{j.applicants === 1 ? '' : 's'}</small>}
               </div>
             </Link>
           )) : <div className="card empty">No jobs match{city ? ` in ${city}` : ''}.</div>)}

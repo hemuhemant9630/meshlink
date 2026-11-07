@@ -6,6 +6,7 @@ import Icon from '@/components/Icon';
 import { DateTile } from '@/components/Widgets';
 import { SubmitButton } from '@/components/client';
 import { createEvent, toggleRsvp } from '@/app/actions';
+import { EVENT_SOURCE_KEYS, SOURCES, lastSync, sourceLabel } from '@/lib/sources';
 
 export default async function Meetups({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const me = await requireUser();
@@ -23,6 +24,7 @@ export default async function Meetups({ searchParams }: { searchParams: Promise<
      ORDER BY e.starts_at ${tab === 'past' ? 'DESC' : 'ASC'} LIMIT 60`, [me.id, tab === 'going' ? '' : city, tab === 'going']);
   const myGroups = await query<any>('SELECT g.id,g.name FROM group_members m JOIN groups g ON g.id=m.group_id WHERE m.user_id=$1 ORDER BY g.name', [me.id]);
   const minDate = new Date().toISOString().slice(0, 10);
+  const synced = await lastSync();
   return (
     <main className="page">
       <div className="page-header">
@@ -37,13 +39,18 @@ export default async function Meetups({ searchParams }: { searchParams: Promise<
             <Link href="/meetups?tab=going" className={tab === 'going' ? 'active' : ''}>I&apos;m going</Link>
             <Link href="/meetups?tab=past" className={tab === 'past' ? 'active' : ''}>Past</Link>
           </div></div>
+          {tab !== 'past' && (
+            <p className="muted sync-note">Upcoming MuleSoft &amp; Salesforce community events are pulled in daily from{' '}
+              {EVENT_SOURCE_KEYS.map((k, i) => <span key={k}>{i ? ' and ' : ''}<a href={SOURCES[k].url} target="_blank" rel="noopener noreferrer">{SOURCES[k].label}</a></span>)}
+              {synced ? <> · last synced {synced} ago</> : null}. RSVP here to tell the community you&apos;re going, then register on the event page.</p>
+          )}
           {events.length ? events.map((e) => (
             <div key={e.id} className="card card-body row" style={{ flexWrap: 'nowrap', alignItems: 'flex-start' }}>
               <DateTile d={e.starts_at} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link href={`/meetups/${e.id}`} className="strong-link" style={{ fontSize: '1rem' }}>{e.title}</Link>
                 <p className="muted"><small>{fmtDate(e.starts_at)} · {e.is_online ? <><Icon name="globe" size={12} /> Online</> : <><Icon name="pin" size={12} /> {e.venue || e.city}</>}</small></p>
-                <p className="muted"><small>{e.going} going{e.capacity ? ` / ${e.capacity} spots` : ''} · by {e.organizer}{e.group_name ? ` · ${e.group_name}` : ''}</small></p>
+                <p className="muted"><small>{e.going} going{e.capacity ? ` / ${e.capacity} spots` : ''}{e.source !== 'meshlink' ? <> · <span className="badge badge-source">via {sourceLabel(e.source)}</span></> : <> · by {e.organizer}{e.group_name ? ` · ${e.group_name}` : ''}</>}</small></p>
               </div>
               {tab !== 'past' && (
                 <form action={toggleRsvp}><input type="hidden" name="event_id" value={e.id} /><input type="hidden" name="redirect" value={`/meetups${tab === 'going' ? '?tab=going' : ''}`} />

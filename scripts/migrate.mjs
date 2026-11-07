@@ -29,9 +29,20 @@ const statements = readFileSync(path.join(dir, 'schema.sql'), 'utf8')
 for (const s of statements) await run(s);
 console.log(`[migrate] schema ready (${statements.length} statements)`);
 
+async function importExternal() {
+  if (process.env.IMPORT_ON_BUILD === '0') return;
+  try {
+    const { runImport } = await import('../lib/importer.mjs');
+    await runImport(run, { trigger: 'build' });
+  } catch (e) {
+    console.warn('[import] skipped:', e.message); // never fail the build because a feed is down
+  }
+}
+
 const [{ n }] = await run('SELECT count(*)::int AS n FROM users');
 if (n > 0 || process.env.SKIP_SEED === '1') {
   console.log('[migrate] users exist — skipping seed');
+  await importExternal();
   await close();
   process.exit(0);
 }
@@ -137,4 +148,5 @@ for (const j of jobs) await run('INSERT INTO jobs (title,company,city,work_mode,
 
 await run(`INSERT INTO notifications (user_id,actor_id,text,link) VALUES ($1,$2,'sent you a connection request','/network'),($1,$3,'sent you a connection request','/network'),($1,$4,'liked your comment','/feed')`, [ids.demo, ids.priya, ids.meera, ids.arjun]);
 console.log('[migrate] seed complete. Demo login: demo@meshlink.dev / demo1234');
+await importExternal();
 await close();

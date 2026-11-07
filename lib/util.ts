@@ -1,10 +1,6 @@
 import { cookies } from 'next/headers';
 
-export const CITIES = [
-  'Hyderabad', 'Bengaluru', 'Pune', 'Chennai', 'Mumbai', 'Delhi NCR', 'Noida', 'Gurugram', 'Kolkata', 'Ahmedabad',
-  'Indore', 'Jaipur', 'Kochi', 'Bhopal', 'San Francisco', 'New York', 'Chicago', 'Dallas', 'Austin', 'Toronto',
-  'London', 'Dublin', 'Berlin', 'Amsterdam', 'Sydney', 'Melbourne', 'Singapore', 'Dubai',
-];
+export { CITIES } from './cities.mjs';
 export const TOPICS = ['General', 'MuleSoft', 'Salesforce', 'Architecture', 'Careers', 'Certifications'];
 export const WORK_MODES = ['Onsite', 'Hybrid', 'Remote'];
 export const JOB_TYPES = ['Full-time', 'Contract', 'Part-time', 'Internship'];

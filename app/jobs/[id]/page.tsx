@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar';
 import Icon from '@/components/Icon';
 import { SubmitButton } from '@/components/client';
 import { applyJob, setApplicationStatus, toggleJobActive } from '@/app/actions';
+import { SOURCES, sourceLabel } from '@/lib/sources';
 
 const STATUSES = ['Applied', 'Shortlisted', 'Interviewing', 'Offered', 'Rejected'];
 
@@ -15,7 +16,8 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
   const id = parseInt((await params).id);
   const j = id ? await one<any>('SELECT j.*, u.name poster_name, u.headline poster_headline FROM jobs j LEFT JOIN users u ON u.id=j.poster_id WHERE j.id=$1', [id]) : null;
   if (!j) notFound();
-  const isPoster = j.poster_id === me.id;
+  const isPoster = !!j.poster_id && j.poster_id === me.id;
+  const external = j.source && j.source !== 'meshlink';
   const myApp = await one<any>('SELECT status,created_at FROM job_applications WHERE job_id=$1 AND user_id=$2', [id, me.id]);
   const apps = isPoster ? await query<any>(
     `SELECT a.id,a.note,a.status,a.created_at,u.id uid,u.name,u.headline,u.city FROM job_applications a JOIN users u ON u.id=a.user_id WHERE a.job_id=$1 ORDER BY a.created_at DESC`, [id]) : [];
@@ -23,7 +25,7 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
     <main className="page">
       <div className="page-header">
         <span className="icon-tile tile-navy" style={{ fontWeight: 800 }}>{j.company.slice(0, 1).toUpperCase()}</span>
-        <div><div className="eyebrow">{j.company} · {j.city || '—'} · {j.work_mode}</div><h1>{j.title}</h1></div>
+        <div><div className="eyebrow">{j.company} · {j.city === j.work_mode ? j.city : `${j.city || '—'} · ${j.work_mode}`}</div><h1>{j.title}</h1></div>
         <div className="actions">
           {!j.active && <span className="badge">Closed</span>}
           {isPoster && <form action={toggleJobActive}><input type="hidden" name="job_id" value={id} /><button className="btn">{j.active ? 'Close job' : 'Reopen job'}</button></form>}
@@ -34,11 +36,11 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           <div className="card card-body stack-sm">
             <dl className="kv">
               <dt>Company</dt><dd>{j.company}</dd>
-              <dt>Location</dt><dd>{j.city || '—'} ({j.work_mode})</dd>
+              <dt>Location</dt><dd>{j.city === j.work_mode ? j.city : `${j.city || '—'} (${j.work_mode})`}</dd>
               <dt>Type</dt><dd>{j.job_type}</dd>
               {j.experience && <><dt>Experience</dt><dd>{j.experience}</dd></>}
               {j.salary && <><dt>Compensation</dt><dd>{j.salary}</dd></>}
-              <dt>Posted</dt><dd>{timeAgo(j.created_at)} by <Link href={`/profile/${j.poster_id}`}>{j.poster_name}</Link></dd>
+              <dt>Posted</dt><dd>{timeAgo(j.posted_at || j.created_at)}{external ? <> on <a href={SOURCES[j.source]?.url} target="_blank" rel="noopener noreferrer">{sourceLabel(j.source)}</a></> : <> by <Link href={`/profile/${j.poster_id}`}>{j.poster_name}</Link></>}</dd>
             </dl>
             <div>{(j.skills || []).map((s: string) => <span key={s} className="pill">{s}</span>)}</div>
             {j.description && <p style={{ whiteSpace: 'pre-wrap' }}>{j.description}</p>}
@@ -66,7 +68,16 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
           )}
         </section>
         <aside className="stack">
-          {!isPoster && (
+          {external && (
+            <div className="card">
+              <div className="card-header"><h2>Apply</h2></div>
+              <div className="card-body stack-sm">
+                <a href={j.external_url} target="_blank" rel="noopener noreferrer nofollow" className="btn btn-brand btn-block">Apply on {sourceLabel(j.source)} ↗</a>
+                <p className="muted"><small>This listing was found on <a href={SOURCES[j.source]?.url} target="_blank" rel="noopener noreferrer">{sourceLabel(j.source)}</a>. You&apos;ll apply on the original posting.</small></p>
+              </div>
+            </div>
+          )}
+          {!isPoster && !external && (
             <div className="card">
               <div className="card-header"><h2>{myApp ? 'Your application' : 'Apply'}</h2></div>
               <div className="card-body stack-sm">
@@ -83,11 +94,11 @@ export default async function JobPage({ params }: { params: Promise<{ id: string
               </div>
             </div>
           )}
-          <div className="card">
+          {!external && <div className="card">
             <div className="card-header"><h2>Posted by</h2></div>
             <ul className="list"><li><Avatar name={j.poster_name || '?'} id={j.poster_id} size={40} /><div className="grow"><Link href={`/profile/${j.poster_id}`} className="strong-link">{j.poster_name}</Link><small>{j.poster_headline}</small></div>
               {!isPoster && <Link href={`/messages?with=${j.poster_id}`} className="btn btn-sm">Message</Link>}</li></ul>
-          </div>
+          </div>}
         </aside>
       </div>
     </main>

@@ -15,6 +15,7 @@ A LinkedIn-style professional network for **MuleSoft & Salesforce** people. It h
 | **Jobs** | Post jobs, filter by work mode or type, Easy apply with a note; posters move applicants through Applied → Shortlisted → Interviewing → Offered/Rejected |
 | **Notifications** | Connection requests and acceptances, likes, comments, group joins, RSVPs, applications, status changes |
 | **Search** | Global search across people, posts, jobs and groups |
+| **Auto-imported jobs & events** | A daily job pulls MuleSoft & Salesforce jobs posted in the last 15 days from Jobicy, Himalayas, Arbeitnow and (optionally) Adzuna, plus upcoming community events from MuleSoft Meetups and Trailblazer Community Groups. Each listing links back to the original |
 | **City filter** | Header dropdown stored in a cookie; it filters the feed, people, groups, meetups (plus online) and jobs (plus remote) |
 
 **Stack:** Next.js 15 (App Router and Server Actions) · Postgres on Neon (`@neondatabase/serverless` HTTP driver) · JWT session cookies (`jose`) · `bcryptjs` · plain CSS.
@@ -27,6 +28,21 @@ A LinkedIn-style professional network for **MuleSoft & Salesforce** people. It h
 4. **Redeploy.** The build runs `scripts/migrate.mjs`, which creates the tables and seeds demo data on an empty database.
 
 Demo login: `demo@meshlink.dev` / `demo1234`. All seeded users share the same password.
+
+## Auto-import (jobs & events)
+
+`lib/importer.mjs` runs once a day via Vercel Cron (`vercel.json` → `/api/cron/import`, 06:00 IST) and on every build.
+
+| Source | What | Key needed |
+|---|---|---|
+| [Jobicy](https://jobicy.com) | Remote Salesforce / MuleSoft jobs | No |
+| [Himalayas](https://himalayas.app) | Remote jobs | No |
+| [Arbeitnow](https://www.arbeitnow.com) | Europe jobs | No |
+| [Adzuna](https://developer.adzuna.com) | India, US, UK, AU, SG, CA, DE, NL jobs | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` (free) |
+| [MuleSoft Meetups](https://meetups.mulesoft.com) | Upcoming MuleSoft meetups worldwide | No |
+| [Trailblazer Community Groups](https://trailblazercommunitygroups.com) | Upcoming Salesforce user-group events | No |
+
+Only titles matching MuleSoft/Salesforce terms are kept. Jobs older than `JOB_MAX_AGE_DAYS` (default 15) and events that have ended are removed automatically. Events are imported for the next `EVENT_WINDOW_DAYS` (default 60). Optional env: `CRON_SECRET`, `ADZUNA_COUNTRIES`, `IMPORT_ON_BUILD=0`.
 
 ## Local development
 

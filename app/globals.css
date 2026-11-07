@@ -298,3 +298,5 @@ textarea.input { resize: vertical; }
   .composer-foot { padding-left: 0; }
   .page-header .actions { margin-left: 0; width: 100%; }
 }
+.badge-source { background: #f3f3f3; color: #444; border: 1px solid var(--border); text-transform: none; letter-spacing: 0; font-weight: 600; }
+.sync-note { font-size: .8rem; padding: 0 .25rem; }
