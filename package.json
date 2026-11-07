@@ -1,0 +1,31 @@
+{
+  "name": "meshlink",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MeshLink — the professional network for MuleSoft & Salesforce people, filterable by city.",
+  "scripts": {
+    "dev": "next dev",
+    "db:migrate": "node scripts/migrate.mjs",
+    "build": "node scripts/migrate.mjs && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.15",
+    "next": "^15.5.29",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "typescript": "^5.9.3"
+  }
+}
